@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Conglomerate - Executive Dashboard</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- React & ReactDOM (Standalone) -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.4); border-radius: 20px; }
+        .custom-scrollbar:hover::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.6); }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased h-screen overflow-hidden font-sans">
+    
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- Agent Personas Configuration ---
+        const AGENTS = {
+          // 1. MANAGEMENT & OPERATIONS
+          SECRETARY: { id: 'SECRETARY', name: 'คุณเลขา (Executive Secretary)', icon: 'fa-solid fa-robot', color: 'bg-purple-600', role: 'เลขาธิการส่วนตัวของ CEO ประสานงานและสรุปผล' },
+          PROJECT_MANAGER: { id: 'PROJECT_MANAGER', name: 'Senior Project Manager', icon: 'fa-solid fa-briefcase', color: 'bg-indigo-600', role: 'แปลง Spec เป็น Task, กำหนดขอบเขตงานที่ทำได้จริง ไม่เพ้อฝัน' },
+          HR_MANAGER: { id: 'HR_MANAGER', name: 'HR & Culture Manager', icon: 'fa-solid fa-heart', color: 'bg-rose-400', role: 'ดูแลทรัพยากรบุคคล สวัสดิการ และสภาพจิตใจพนักงานในบริษัท' },
+
+          // 2. FINANCE & INVESTMENT
+          CFO: { id: 'CFO', name: 'Chief Financial Officer (CFO)', icon: 'fa-solid fa-landmark', color: 'bg-emerald-700', role: 'ดูแลกระแสเงินสด จัดสรรงบประมาณ และควบคุมต้นทุนบริษัท' },
+          QUANT_TRADER: { id: 'QUANT_TRADER', name: 'Quant & Algo Trader', icon: 'fa-solid fa-chart-line', color: 'bg-emerald-500', role: 'นักเทรดสายอัลกอริทึม ค้นหาราคาตลาดสดก่อนวิเคราะห์กราฟเสมอ' },
+          VENTURE_CAPITALIST: { id: 'VENTURE_CAPITALIST', name: 'Venture Capitalist', icon: 'fa-solid fa-coins', color: 'bg-amber-500', role: 'มองหาโอกาสลงทุน หรือวิเคราะห์ความคุ้มค่าในการ M&A' },
+          RISK_MANAGER: { id: 'RISK_MANAGER', name: 'Financial Risk Manager', icon: 'fa-solid fa-shield-halved', color: 'bg-red-600', role: 'ประเมินความเสี่ยง ป้องกันพอร์ตการลงทุนของบริษัทไม่ให้ขาดทุน' },
+
+          // 3. LEGAL & COMPLIANCE
+          CORPORATE_LAWYER: { id: 'CORPORATE_LAWYER', name: 'Corporate Lawyer', icon: 'fa-solid fa-scale-balanced', color: 'bg-slate-800', role: 'ฝ่ายกฎหมาย ตรวจสอบสัญญา และความเสี่ยงทางกฎหมาย' },
+
+          // 4. ENGINEERING & AI
+          FRONTEND_WIZARD: { id: 'FRONTEND_WIZARD', name: 'Frontend Wizard', icon: 'fa-solid fa-terminal', color: 'bg-blue-500', role: 'ผู้เชี่ยวชาญด้าน UI/UX และ Frontend เน้นความสวยงาม' },
+          BACKEND_ARCHITECT: { id: 'BACKEND_ARCHITECT', name: 'Backend Architect', icon: 'fa-solid fa-code', color: 'bg-slate-700', role: 'ผู้ออกแบบระบบ API และโครงสร้างฐานข้อมูล เน้นการขยายสเกล' },
+          MOBILE_DEVELOPER: { id: 'MOBILE_DEVELOPER', name: 'Mobile Developer', icon: 'fa-solid fa-mobile-screen', color: 'bg-teal-600', role: 'ผู้พัฒนาแอปพลิเคชัน iOS และ Android' },
+          DEV_OPS: { id: 'DEV_OPS', name: 'DevOps Engineer', icon: 'fa-solid fa-server', color: 'bg-zinc-600', role: 'ดูแล Server, Cloud Infrastructure และการ Deploy ระบบ' },
+          AI_ENGINEER: { id: 'AI_ENGINEER', name: 'AI & ML Engineer', icon: 'fa-solid fa-microchip', color: 'bg-indigo-500', role: 'สร้างและเทรนโมเดล AI นำเทคโนโลยีปัญญาประดิษฐ์มาประยุกต์' },
+
+          // 5. DESIGN & CREATIVE
+          UI_UX_DESIGNER: { id: 'UI_UX_DESIGNER', name: 'UI/UX Designer', icon: 'fa-solid fa-pen-nib', color: 'bg-pink-500', role: 'ออกแบบประสบการณ์ผู้ใช้ สร้าง Wireframe' },
+          BRAND_GUARDIAN: { id: 'BRAND_GUARDIAN', name: 'Brand Guardian', icon: 'fa-solid fa-shield', color: 'bg-rose-500', role: 'ผู้รักษาอัตลักษณ์แบรนด์ ควบคุมฟอนต์และโทนสี' },
+          WHIMSY_INJECTOR: { id: 'WHIMSY_INJECTOR', name: 'Whimsy Injector', icon: 'fa-solid fa-wand-magic-sparkles', color: 'bg-fuchsia-500', role: 'เติมกิมมิคความขบขันและลูกเล่นสร้างสรรค์ ให้โปรดักต์มีชีวิตชีวา' },
+
+          // 6. MARKETING & SALES
+          GROWTH_HACKER: { id: 'GROWTH_HACKER', name: 'Marketing Growth Hacker', icon: 'fa-solid fa-arrow-trend-up', color: 'bg-green-500', role: 'ผู้เชี่ยวชาญการหาช่องทางเติบโตแบบก้าวกระโดด' },
+          REDDIT_NINJA: { id: 'REDDIT_NINJA', name: 'Reddit Community Ninja', icon: 'fa-solid fa-users', color: 'bg-orange-500', role: 'นักการตลาดแบบกองโจร รู้วิธีแทรกซึมชุมชนออนไลน์' },
+          SALES_DIRECTOR: { id: 'SALES_DIRECTOR', name: 'B2B Sales Director', icon: 'fa-solid fa-bullseye', color: 'bg-red-500', role: 'ปิดการขาย เจรจาธุรกิจกับลูกค้ารายใหญ่เพื่อหารายได้เข้าบริษัท' },
+          COPYWRITER: { id: 'COPYWRITER', name: 'Expert Copywriter', icon: 'fa-solid fa-font', color: 'bg-yellow-600', role: 'นักเขียนคำโฆษณาที่โน้มน้าวใจลูกค้า' },
+
+          // 7. QA, SECURITY & SUPPORT
+          QA_TESTER: { id: 'QA_TESTER', name: 'Strict QA Tester', icon: 'fa-solid fa-bug', color: 'bg-red-500', role: 'ผู้ทดสอบระบบสุดโหด ค้นหาบั๊ก' },
+          SECURITY_ENGINEER: { id: 'SECURITY_ENGINEER', name: 'Security Engineer', icon: 'fa-solid fa-user-secret', color: 'bg-red-800', role: 'หาช่องโหว่และป้องกันระบบจากการถูกแฮ็ก' },
+          REALITY_CHECKER: { id: 'REALITY_CHECKER', name: 'Reality Checker', icon: 'fa-solid fa-circle-exclamation', color: 'bg-amber-600', role: 'ประเมินความเป็นไปได้และหาจุดบอดของโปรเจกต์' },
+          CUSTOMER_SUPPORT: { id: 'CUSTOMER_SUPPORT', name: 'Customer Success', icon: 'fa-solid fa-headset', color: 'bg-sky-400', role: 'ดูแลลูกค้า แก้ปัญหาการใช้งาน สร้างความประทับใจหลังการขาย' },
+
+          // 8. DATA & RESEARCH
+          DATA_SCIENTIST: { id: 'DATA_SCIENTIST', name: 'Data Scientist', icon: 'fa-solid fa-database', color: 'bg-sky-500', role: 'วิเคราะห์ข้อมูลขนาดใหญ่ ทำโมเดลพยากรณ์' },
+          MARKET_RESEARCHER: { id: 'MARKET_RESEARCHER', name: 'Market Researcher', icon: 'fa-solid fa-chart-pie', color: 'bg-violet-500', role: 'วิจัยตลาดและพฤติกรรมผู้บริโภค' },
+
+          // 9. PERSONAL & LIFESTYLE
+          LIFESTYLE_CONCIERGE: { id: 'LIFESTYLE_CONCIERGE', name: 'Lifestyle Concierge', icon: 'fa-solid fa-mug-hot', color: 'bg-yellow-500', role: 'ผู้ช่วยส่วนตัว จองตั๋วเครื่องบิน ร้านอาหาร วางแผนท่องเที่ยว และธุระจิปาถะ' },
+          PERSONAL_TRAINER: { id: 'PERSONAL_TRAINER', name: 'Personal Health Coach', icon: 'fa-solid fa-heart-pulse', color: 'bg-green-600', role: 'ดูแลสุขภาพ จัดตารางโภชนาการ และการออกกำลังกายให้ CEO' },
+          PRIVATE_WEALTH: { id: 'PRIVATE_WEALTH', name: 'Private Wealth Manager', icon: 'fa-solid fa-wallet', color: 'bg-amber-600', role: 'จัดการทรัพย์สินส่วนตัว การลงทุนส่วนบุคคล และความมั่งคั่งของครอบครัว' }
+        };
+
+        const DEPARTMENTS = {
+          'Management & HR': ['SECRETARY', 'PROJECT_MANAGER', 'HR_MANAGER'],
+          'Finance & Investment': ['CFO', 'QUANT_TRADER', 'VENTURE_CAPITALIST', 'RISK_MANAGER'],
+          'Legal': ['CORPORATE_LAWYER'],
+          'Engineering & AI': ['FRONTEND_WIZARD', 'BACKEND_ARCHITECT', 'MOBILE_DEVELOPER', 'DEV_OPS', 'AI_ENGINEER'],
+          'Design & Creative': ['UI_UX_DESIGNER', 'BRAND_GUARDIAN', 'WHIMSY_INJECTOR'],
+          'Marketing & Sales': ['GROWTH_HACKER', 'REDDIT_NINJA', 'SALES_DIRECTOR', 'COPYWRITER'],
+          'QA, Security & Support': ['QA_TESTER', 'SECURITY_ENGINEER', 'REALITY_CHECKER', 'CUSTOMER_SUPPORT'],
+          'Data & Research': ['DATA_SCIENTIST', 'MARKET_RESEARCHER'],
+          'Personal & Lifestyle': ['LIFESTYLE_CONCIERGE', 'PERSONAL_TRAINER', 'PRIVATE_WEALTH']
+        };
+
+        function App() {
+          // --- State Management ---
+          const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
+          const [showApiModal, setShowApiModal] = useState(!localStorage.getItem('gemini_api_key'));
+          const [apiKeyInput, setApiKeyInput] = useState('');
+          
+          const [messages, setMessages] = useState([
+            {
+              id: 1,
+              sender: 'SECRETARY',
+              type: 'text',
+              content: 'สวัสดีค่ะท่านประธาน ดิฉันพร้อมให้บริการผ่านระบบ Web Application แล้วค่ะ!\n\n(หากนี่เป็นการใช้งานครั้งแรก กรุณาตั้งค่า API Key เพื่อเปิดระบบสมองกลของบริษัทให้เต็มรูปแบบค่ะ)',
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }
+          ]);
+          const [inputValue, setInputValue] = useState('');
+          const [isProcessing, setIsProcessing] = useState(false);
+          const [isRefining, setIsRefining] = useState(false);
+          const [activeTasks, setActiveTasks] = useState([]);
+          const [pastProjects, setPastProjects] = useState([]);
+          const messagesEndRef = useRef(null);
+
+          useEffect(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          }, [messages, activeTasks]);
+
+          // --- API Setup Logic ---
+          const saveApiKey = () => {
+              if (apiKeyInput.trim().length > 10) {
+                  localStorage.setItem('gemini_api_key', apiKeyInput.trim());
+                  setApiKey(apiKeyInput.trim());
+                  setShowApiModal(false);
+              } else {
+                  alert('กรุณากรอก API Key ให้ถูกต้อง');
+              }
+          };
+
+          const logout = () => {
+              localStorage.removeItem('gemini_api_key');
+              setApiKey('');
+              setShowApiModal(true);
+          }
+
+          // --- Audio Helpers ---
+          const base64ToArrayBuffer = (base64) => {
+            const binary_string = window.atob(base64);
+            const len = binary_string.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) { bytes[i] = binary_string.charCodeAt(i); }
+            return bytes.buffer;
+          };
+
+          const pcmToWav = (pcmData, sampleRate) => {
+            const numChannels = 1; const bitsPerSample = 16;
+            const byteRate = (sampleRate * numChannels * bitsPerSample) / 8;
+            const blockAlign = (numChannels * bitsPerSample) / 8;
+            const dataSize = pcmData.byteLength;
+            const buffer = new ArrayBuffer(44 + dataSize);
+            const view = new DataView(buffer);
+
+            const writeString = (view, offset, string) => {
+              for (let i = 0; i < string.length; i++) { view.setUint8(offset + i, string.charCodeAt(i)); }
+            };
+
+            writeString(view, 0, 'RIFF'); view.setUint32(4, 36 + dataSize, true);
+            writeString(view, 8, 'WAVE'); writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+            view.setUint16(22, numChannels, true); view.setUint32(24, sampleRate, true);
+            view.setUint32(28, byteRate, true); view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bitsPerSample, true); writeString(view, 36, 'data');
+            view.setUint32(40, dataSize, true);
+
+            const pcmBytes = new Uint8Array(pcmData);
+            const wavBytes = new Uint8Array(buffer, 44);
+            wavBytes.set(pcmBytes);
+            return buffer;
+          };
+
+          // --- Gemini API Caller ---
+          const callGemini = async (prompt, systemInstruction, responseSchema = null, useSearch = false) => {
+            if (!apiKey) throw new Error("API Key is missing!");
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = {
+              contents: [{ parts: [{ text: prompt }] }],
+              systemInstruction: { parts: [{ text: systemInstruction }] },
+            };
+
+            if (useSearch) payload.tools = [{ google_search: {} }];
+            if (responseSchema) {
+              payload.generationConfig = {
+                responseMimeType: "application/json",
+                responseSchema: responseSchema
+              };
+            }
+
+            let retries = 5; let delay = 1000;
+            while (retries > 0) {
+              try {
+                const response = await fetch(url, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error?.message || `HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                return responseSchema ? JSON.parse(text) : text;
+              } catch (error) {
+                retries--;
+                if (retries === 0) throw error; 
+                await new Promise(res => setTimeout(res, delay));
+                delay *= 2;
+              }
+            }
+          };
+
+          // --- LLM Features ---
+          const handleRefinePrompt = async (mode) => {
+            if (!inputValue.trim() || !apiKey) return;
+            setIsRefining(true);
+            try {
+              let sysInstruction = "";
+              let promptMsg = inputValue;
+              
+              if (mode === 'expand') {
+                sysInstruction = "คุณคือ AI ผู้เชี่ยวชาญด้าน Prompt Engineering ประจำตัว CEO นำไอเดียสั้นๆ ของ CEO มาขยายเป็น 'คำสั่งผู้บริหาร (Executive Directive)' ที่ครอบคลุม เป็นทางการ ระบุเป้าหมายชัดเจน ตอบกลับเฉพาะข้อความที่ขยายแล้ว ภาษาไทย";
+              } else if (mode === 'risk') {
+                sysInstruction = "คุณคือที่ปรึกษาความเสี่ยง ประเมินคำสั่งต่อไปนี้และสรุป 'ความเสี่ยงหลักที่ซ่อนอยู่' 3 ข้อ พร้อมคำแนะนำรับมือสั้นๆ ตอบเป็น bullet ภาษาไทย";
+              }
+              
+              const result = await callGemini(promptMsg, sysInstruction, null, false);
+              
+              if (mode === 'expand') setInputValue(result.trim());
+              else if (mode === 'risk') {
+                setMessages(prev => [...prev, {
+                  id: Date.now(),
+                  sender: 'SECRETARY',
+                  type: 'text',
+                  content: `⚠️ ท่านประธานคะ ดิฉันได้ทำการประเมินความเสี่ยงเบื้องต้นมาให้ค่ะ:\n\n${result}`,
+                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                }]);
+              }
+            } catch (e) {
+              setMessages(prev => [...prev, { id: Date.now(), sender: 'SECRETARY', type: 'error', content: `วิเคราะห์ขัดข้อง (${e.message})`, timestamp: new Date().toLocaleTimeString() }]);
+            } finally { setIsRefining(false); }
+          };
+
+          const handleDraftEmail = async (project) => {
+            if (!apiKey) return;
+            setIsProcessing(true);
+            try {
+              const sysInstruction = "คุณคือ Chief Communications Officer เขียนร่างอีเมลประกาศบริษัท (Company-wide Announcement) แจ้งให้พนักงานทราบวิสัยทัศน์หรือข่าวดี เขียนให้ดูมีพลังและมืออาชีพ ภาษาไทย";
+              const promptMsg = `ชื่อเรื่อง: ${project.name}\nสรุป: ${project.memory}\nร่างอีเมลประกาศให้ที`;
+              
+              setActiveTasks([{ id: 'email', agent: 'SECRETARY', status: 'working', text: 'กำลังร่างประกาศ...' }]);
+              const result = await callGemini(promptMsg, sysInstruction, null, false);
+              
+              setMessages(prev => [...prev, {
+                id: Date.now(), sender: 'SECRETARY', type: 'report', 
+                content: `### 📧 ร่างประกาศบริษัท\n\n${result}`, timestamp: new Date().toLocaleTimeString()
+              }]);
+            } catch (e) { console.error(e); } 
+            finally { setIsProcessing(false); setActiveTasks([]); }
+          };
+
+          const handlePlayAudio = async (text, messageId) => {
+            setMessages(prev => prev.map(m => m.id === messageId ? { ...m, isAudioLoading: true } : m));
+            try {
+              const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+              const payload = {
+                contents: [{ parts: [{ text: `เรียนท่านประธาน สรุปคือ: ${text}` }] }],
+                generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } } }
+              };
+              
+              const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+              if (!response.ok) throw new Error("TTS failed");
+              
+              const data = await response.json();
+              const inlineData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+              if (!inlineData) throw new Error("No audio data");
+              
+              const match = inlineData.mimeType.match(/rate=(\d+)/);
+              const sampleRate = match ? parseInt(match[1]) : 24000;
+              const pcmBuffer = base64ToArrayBuffer(inlineData.data);
+              const wavBuffer = pcmToWav(pcmBuffer, sampleRate);
+              const blob = new Blob([wavBuffer], { type: 'audio/wav' });
+              const audioUrl = URL.createObjectURL(blob);
+              
+              setMessages(prev => prev.map(m => m.id === messageId ? { ...m, isAudioLoading: false, audioUrl } : m));
+            } catch (error) {
+              setMessages(prev => prev.map(m => m.id === messageId ? { ...m, isAudioLoading: false, audioError: true } : m));
+            }
+          };
+
+          // --- Chat Execution Logic ---
+          const handleSend = async () => {
+            if (!inputValue.trim() || isProcessing || !apiKey) return;
+
+            const userMsg = inputValue.trim();
+            setInputValue('');
+            
+            setMessages(prev => [...prev, {
+              id: Date.now(), sender: 'CEO', type: 'text', content: userMsg, timestamp: new Date().toLocaleTimeString()
+            }]);
+            setIsProcessing(true);
+
+            const memoryContext = pastProjects.length > 0 
+              ? `\n\n[Memory: ประวัติงาน/ข้อมูลส่วนตัวของ CEO]\n${pastProjects.map((p, i) => `${i+1}. เรื่อง: ${p.name} - ข้อมูล: ${p.memory}`).join('\n')}\n*อ้างอิงเสมอ*`
+              : '';
+
+            try {
+              // 1. ROUTING
+              setActiveTasks([{ id: 'routing', agent: 'SECRETARY', status: 'thinking', text: 'กำลังจัดสรรทีม...' }]);
+              
+              const routerSystemPrompt = `คุณคือ "Universal Executive Assistant" ประจำตัว CEO ดูแลทั้งธุรกิจและชีวิตส่วนตัว
+แยกแยะว่าคำสั่งเป็นเรื่องงานหรือส่วนตัว แล้วเลือกแผนกที่เหมาะสม (3-6 แผนก) จาก:
+${Object.keys(AGENTS).map(k => `- ${k}: ${AGENTS[k].role}`).join('\n')}
+${memoryContext}
+* หากสั่งเรื่องราคาหุ้น คริปโต ทองคำ ให้ดึง QUANT_TRADER มาเสมอ
+
+ตอบเป็น JSON:
+1. reply_to_ceo: ข้อความตอบรับสุภาพ (ภาษาไทย)
+2. tasks: Array { agent_id, task_description (บรีฟงานละเอียด) }`;
+
+              const routerSchema = {
+                type: "OBJECT",
+                properties: { reply_to_ceo: { type: "STRING" }, tasks: { type: "ARRAY", items: { type: "OBJECT", properties: { agent_id: { type: "STRING" }, task_description: { type: "STRING" } } } } },
+                required: ["reply_to_ceo", "tasks"]
+              };
+
+              const routingPlan = await callGemini(userMsg, routerSystemPrompt, routerSchema);
+              
+              setMessages(prev => [...prev, { id: Date.now(), sender: 'SECRETARY', type: 'routing_plan', content: routingPlan.reply_to_ceo, tasks: routingPlan.tasks, timestamp: new Date().toLocaleTimeString() }]);
+
+              if (!routingPlan.tasks || routingPlan.tasks.length === 0) { setIsProcessing(false); setActiveTasks([]); return; }
+
+              // 2. PARALLEL WORKERS
+              const tasksToRun = routingPlan.tasks.map((task, index) => ({ id: `task_${index}`, agent: task.agent_id, prompt: task.task_description, status: 'working' }));
+              const validTasks = tasksToRun.filter(t => AGENTS[t.agent]);
+              setActiveTasks(validTasks.map(t => ({ id: t.id, agent: t.agent, status: 'working', text: `กำลังทำงาน...` })));
+
+              const workerPromises = validTasks.map(async (task) => {
+                const agentPersona = AGENTS[task.agent];
+                const systemPrompt = `คุณคือ ${agentPersona.name} หน้าที่: ${agentPersona.role}
+เจ้านายมอบหมาย: ${memoryContext}
+*** กฎเหล็ก ***: หากถามราคาสินทรัพย์ปัจจุบัน ต้องใช้คำค้นหาภาษาอังกฤษเช่น "XAUUSD live price" ผ่าน Google Search เพื่อหาราคา ณ ปัจจุบันเท่านั้น ห้ามเดา!
+ตอบรายงาน กระชับ ตรงประเด็น ภาษาไทย`;
+                
+                const result = await callGemini(task.prompt, systemPrompt, null, true); // True = Enable Search Grounding
+                
+                setActiveTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'done', text: 'ส่งแล้ว' } : t));
+                setMessages(prev => [...prev, { id: Date.now() + Math.random(), sender: task.agent, type: 'agent_report', content: result, taskDesc: task.prompt, timestamp: new Date().toLocaleTimeString() }]);
+                return { agent: task.agent, report: result };
+              });
+
+              const workerReports = await Promise.all(workerPromises);
+
+              // 3. SYNTHESIS
+              setActiveTasks([{ id: 'synthesis', agent: 'SECRETARY', status: 'thinking', text: 'กำลังวิเคราะห์สรุป...' }]);
+
+              let compiledReports = workerReports.map(wr => `--- จาก ${wr.agent} ---\n${wr.report}`).join('\n\n');
+              const synthesizerSystemPrompt = `คุณคือ "Universal Executive Assistant" 
+คำสั่ง CEO: "${userMsg}"
+รายงานดิบ: ${compiledReports}
+
+รวบรวมเป็น "Master Report" เชิงกลยุทธ์ (มี Overview, Risk, Next Steps) จัดรูปแบบ Markdown ให้อ่านง่าย
+และสร้าง "ข้อมูลความจำ" และ "สคริปต์เสียงสั้นๆ 1 ประโยค"`;
+
+              const synthesizerSchema = {
+                type: "OBJECT",
+                properties: { project_name: { type: "STRING" }, key_takeaway: { type: "STRING" }, executive_summary: { type: "STRING" }, short_audio_brief: { type: "STRING" } },
+                required: ["project_name", "key_takeaway", "executive_summary", "short_audio_brief"]
+              };
+
+              const finalData = await callGemini("จัดทำรายงาน Master Report", synthesizerSystemPrompt, synthesizerSchema);
+
+              setPastProjects(prev => [...prev, { id: Date.now(), name: finalData.project_name, memory: finalData.key_takeaway }]);
+              setActiveTasks([]);
+              setMessages(prev => [...prev, { id: Date.now(), sender: 'SECRETARY', type: 'report', content: finalData.executive_summary, short_audio_brief: finalData.short_audio_brief, timestamp: new Date().toLocaleTimeString() }]);
+
+            } catch (error) {
+              setActiveTasks([]);
+              setMessages(prev => [...prev, { id: Date.now(), sender: 'SECRETARY', type: 'error', content: `เกิดข้อผิดพลาด: ${error.message} โปรดลองใหม่`, timestamp: new Date().toLocaleTimeString() }]);
+            } finally { setIsProcessing(false); }
+          };
+
+          const formatMarkdown = (text) => {
+            if (!text) return '';
+            return text
+              .replace(/^### (.*$)/gim, '<h3 class="text-lg mt-4 mb-2 font-bold text-slate-800">$1</h3>')
+              .replace(/^## (.*$)/gim, '<h2 class="text-xl mt-5 mb-3 border-b border-slate-200 pb-1 font-bold text-slate-800">$1</h2>')
+              .replace(/^# (.*$)/gim, '<h1 class="text-2xl mt-6 mb-4 font-bold text-slate-900">$1</h1>')
+              .replace(/\*\*(.*?)\*\*/gim, '<strong class="text-slate-900">$1</strong>')
+              .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+              .replace(/^\- (.*$)/gim, '<li class="ml-4 list-disc marker:text-purple-500 mb-1">$1</li>')
+              .replace(/\n/gim, '<br/>');
+          };
+
+          const handleKeyDown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
+
+          // --- Utility Class Name Extractor for Icon Colors ---
+          const getIconColorClass = (bgColor) => bgColor.replace('bg-', 'text-').replace('-500', '-400').replace('-600', '-500').replace('-700', '-600').replace('-800', '-700');
+
+          return (
+            <div className="flex h-screen bg-slate-50 font-sans text-slate-800 overflow-hidden relative">
+              
+              {/* --- API KEY SETUP MODAL --- */}
+              {showApiModal && (
+                <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                  <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full relative animate-in zoom-in-95 duration-300">
+                    <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-6 mx-auto">
+                      <i className="fa-solid fa-key text-2xl text-purple-600"></i>
+                    </div>
+                    <h2 className="text-2xl font-bold text-center text-slate-800 mb-2">ตั้งค่าระบบสมองกล</h2>
+                    <p className="text-center text-sm text-slate-500 mb-8 leading-relaxed">
+                        เพื่อเริ่มใช้งาน AI Conglomerate กรุณาใส่ <b>Gemini API Key</b> ของคุณ (ข้อมูลจะถูกเก็บไว้เฉพาะในเบราว์เซอร์นี้เท่านั้น ปลอดภัย 100%)
+                    </p>
+                    <input 
+                      type="password" 
+                      value={apiKeyInput} 
+                      onChange={e => setApiKeyInput(e.target.value)} 
+                      placeholder="AIzaSy..." 
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-purple-500 mb-4 font-mono text-sm"
+                    />
+                    <button onClick={saveApiKey} className="w-full bg-slate-900 text-white font-bold rounded-xl py-3 hover:bg-purple-700 transition shadow-md">
+                        เปิดใช้งานระบบบริษัท
+                    </button>
+                    <div className="text-center mt-6">
+                      <a href="https://aistudio.google.com/app/apikey" target="_blank" className="text-xs text-purple-600 hover:underline font-medium">
+                        <i className="fa-solid fa-arrow-up-right-from-square mr-1"></i> รับ API Key ฟรีจาก Google AI Studio
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Sidebar */}
+              <div className="w-80 bg-slate-900 text-slate-300 flex flex-col shadow-2xl z-20 hidden lg:flex flex-shrink-0">
+                <div className="p-5 border-b border-slate-700/50 flex items-center justify-between bg-slate-950/50 sticky top-0 z-10">
+                  <div className="flex items-center space-x-3">
+                      <i className="fa-solid fa-building text-2xl text-purple-400"></i>
+                      <div>
+                        <h1 className="text-xl font-bold text-white tracking-wide">AI Conglomerate</h1>
+                        <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">Web Application</p>
+                      </div>
+                  </div>
+                  <button onClick={logout} title="ออกจากระบบ" className="text-slate-500 hover:text-red-400 transition"><i className="fa-solid fa-right-from-bracket"></i></button>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar pb-10">
+                  <div>
+                    <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 pl-2">Board of Directors</h2>
+                    <div className="flex items-center space-x-3 bg-slate-800/80 p-3 rounded-xl border border-slate-700/50 shadow-inner">
+                      <div className="bg-blue-500/20 p-2.5 rounded-lg text-blue-400"><i className="fa-solid fa-user"></i></div>
+                      <div>
+                        <p className="text-sm font-bold text-white">คุณ (ประธานบริษัท)</p>
+                        <p className="text-[10px] text-slate-400">CEO & Founder</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {Object.entries(DEPARTMENTS).map(([deptName, agentIds]) => (
+                    <div key={deptName}>
+                      <h2 className="text-[10px] font-bold text-purple-400/80 uppercase tracking-widest mb-2 pl-2 border-b border-slate-800 pb-1.5">{deptName}</h2>
+                      <div className="space-y-1">
+                        {agentIds.map(id => {
+                          const agent = AGENTS[id]; if (!agent) return null;
+                          return (
+                            <div key={id} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-slate-800/60 transition-colors group">
+                              <div className={`${agent.color} bg-opacity-15 p-2 rounded-md text-center w-8 h-8 flex items-center justify-center`}>
+                                <i className={`${agent.icon} ${getIconColorClass(agent.color)} text-sm`}></i>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[11px] font-semibold text-slate-200 truncate">{agent.name}</p>
+                                <p className="text-[9px] text-slate-500 truncate mt-0.5">{agent.role}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Memory Section */}
+                  <div className="mt-6 pt-4 border-t border-slate-800">
+                    <h2 className="text-[10px] font-bold text-amber-400/80 uppercase tracking-widest mb-3 pl-2 flex items-center">
+                      <i className="fa-solid fa-box-archive mr-2"></i> Company Memory
+                    </h2>
+                    {pastProjects.length === 0 ? (
+                      <div className="text-center py-4 bg-slate-800/30 rounded-lg border border-slate-800/50">
+                        <p className="text-[10px] text-slate-500 italic">ยังไม่มีประวัติผลงาน</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4 pl-3 border-l-2 border-slate-700/50 ml-3">
+                        {pastProjects.map(p => (
+                          <div key={p.id} className="relative pl-3 group">
+                            <div className="absolute w-2 h-2 bg-amber-500 rounded-full -left-[4.5px] top-1 ring-4 ring-slate-900"></div>
+                            <div className="flex justify-between items-start">
+                              <p className="text-[11px] font-bold text-amber-100 pr-6">{p.name}</p>
+                              <button onClick={() => handleDraftEmail(p)} disabled={isProcessing} className="absolute right-0 top-0 text-slate-500 hover:text-purple-400 opacity-0 group-hover:opacity-100">
+                                <i className="fa-solid fa-envelope"></i>
+                              </button>
+                            </div>
+                            <p className="text-[9px] text-slate-400 mt-1 leading-relaxed bg-slate-800/40 p-2 rounded">{p.memory}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Main Interface */}
+              <div className="flex-1 flex flex-col h-full bg-slate-50 relative min-w-0">
+                <header className="h-16 border-b border-slate-200 bg-white/90 backdrop-blur-md flex items-center justify-between px-6 shadow-sm z-10 sticky top-0 flex-shrink-0">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-purple-100 w-10 h-10 rounded-full flex items-center justify-center border border-purple-200">
+                      <i className="fa-solid fa-robot text-purple-700 text-lg"></i>
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-bold text-slate-800">สำนักงานเลขาธิการ CEO</h2>
+                      <p className="text-[10px] text-green-600 font-bold flex items-center uppercase tracking-wider mt-0.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 animate-pulse"></span>
+                        {apiKey ? "Online & Connected" : "Awaiting API Key..."}
+                      </p>
+                    </div>
+                  </div>
+                  <button onClick={logout} className="lg:hidden text-slate-400 hover:text-slate-800"><i className="fa-solid fa-right-from-bracket"></i></button>
+                </header>
+
+                <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 custom-scrollbar">
+                  {messages.map((msg) => {
+                    const agentData = AGENTS[msg.sender];
+                    const isCEO = msg.sender === 'CEO';
+                    return (
+                    <div key={msg.id} className={`flex ${isCEO ? 'justify-end' : 'justify-start'} animate-in fade-in duration-300`}>
+                      <div className={`flex max-w-[95%] lg:max-w-[85%] ${isCEO ? 'flex-row-reverse' : 'flex-row'}`}>
+                        
+                        <div className={`flex-shrink-0 flex items-start ${isCEO ? 'ml-3' : 'mr-3'}`}>
+                          {isCEO ? (
+                            <div className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center shadow-md border-2 border-white text-white">
+                              <i className="fa-solid fa-user"></i>
+                            </div>
+                          ) : (
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md border-2 border-white ${agentData?.color || 'bg-slate-600'} text-white`}>
+                              <i className={`${agentData?.icon || 'fa-solid fa-robot'}`}></i>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex flex-col min-w-0">
+                          <div className={`flex items-baseline mb-1.5 ${isCEO ? 'justify-end' : 'justify-start'}`}>
+                            <span className="text-xs font-bold text-slate-600 mx-1">{isCEO ? 'คุณ (CEO)' : (agentData?.name || msg.sender)}</span>
+                            <span className="text-[10px] text-slate-400 font-medium">{msg.timestamp}</span>
+                          </div>
+
+                          {msg.type === 'text' && (
+                            <div className={`px-5 py-4 rounded-2xl shadow-sm text-sm leading-relaxed ${isCEO ? 'bg-slate-800 text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-sm whitespace-pre-line'}`}>
+                              {msg.content}
+                            </div>
+                          )}
+
+                          {msg.type === 'routing_plan' && (
+                            <div className="bg-white border border-slate-200 text-slate-800 rounded-2xl rounded-tl-sm shadow-sm p-5 text-sm leading-relaxed">
+                              <p className="font-medium">{msg.content}</p>
+                              {msg.tasks && msg.tasks.length > 0 && (
+                                <div className="mt-4 pt-4 border-t border-slate-100 bg-slate-50/50 rounded-xl p-4">
+                                  <p className="text-[11px] font-bold text-slate-600 mb-3 uppercase tracking-wider flex items-center"><i className="fa-solid fa-users mr-1.5"></i> การกระจายงานให้แผนกต่างๆ:</p>
+                                  <ul className="grid grid-cols-1 gap-3">
+                                    {msg.tasks.map((t, i) => {
+                                      const a = AGENTS[t.agent_id];
+                                      return (
+                                        <li key={i} className="flex flex-col text-xs bg-white p-3.5 rounded-lg border border-slate-200 shadow-sm">
+                                          <div className="flex items-center mb-2">
+                                            <span className={`w-6 h-6 flex items-center justify-center rounded-md text-white mr-2.5 ${a?.color || 'bg-slate-500'}`}><i className={a?.icon}></i></span>
+                                            <span className="font-bold text-slate-800 text-[12px]">{a ? a.id : t.agent_id}</span>
+                                          </div>
+                                          <div className="pl-9 relative">
+                                            <div className="absolute left-3 top-0 bottom-0 w-0.5 bg-slate-100"></div>
+                                            <span className="text-slate-600 leading-relaxed text-[11px] block italic text-justify">"{t.task_description}"</span>
+                                          </div>
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {msg.type === 'agent_report' && (
+                            <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm shadow-sm overflow-hidden mt-1">
+                              <div className={`h-1.5 w-full ${agentData?.color || 'bg-slate-200'}`}></div>
+                              <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                                <div className="flex flex-col"><span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Assigned Task</span><span className="text-[11px] text-slate-700 font-medium line-clamp-1 italic">"{msg.taskDesc}"</span></div>
+                                <i className="fa-solid fa-circle-check text-emerald-500"></i>
+                              </div>
+                              <div className="p-5 text-[13px] text-slate-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.content) }} />
+                            </div>
+                          )}
+
+                          {msg.type === 'report' && (
+                            <div className="bg-white border border-slate-300 rounded-2xl rounded-tl-sm shadow-xl overflow-hidden mt-2">
+                              <div className="bg-slate-800 border-b border-slate-900 px-5 py-4 flex items-center space-x-3">
+                                <div className="bg-white/10 w-8 h-8 rounded-md flex items-center justify-center text-white"><i className="fa-solid fa-file-lines"></i></div>
+                                <span className="font-bold text-white text-base tracking-wide">Executive Report</span>
+                              </div>
+                              <div className="p-6 text-[13.5px] text-slate-800 leading-loose">
+                                <div dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.content) }} />
+                                {msg.short_audio_brief && (
+                                  <div className="mt-6 pt-5 border-t border-slate-200/60 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-50/50 -mx-6 -mb-6 px-6 pb-6">
+                                    <div className="flex-1 pr-4">
+                                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Audio Script</p>
+                                      <span className="text-xs text-slate-600 italic">"{msg.short_audio_brief}"</span>
+                                    </div>
+                                    <div className="mt-3 sm:mt-0 flex-shrink-0">
+                                      {!msg.audioUrl ? (
+                                        <button onClick={() => handlePlayAudio(msg.short_audio_brief, msg.id)} disabled={msg.isAudioLoading || msg.audioError} className="text-[11px] bg-indigo-100 text-indigo-700 px-4 py-2 rounded-full font-bold hover:bg-indigo-200 transition flex items-center shadow-sm disabled:opacity-50">
+                                          {msg.isAudioLoading ? <i className="fa-solid fa-spinner fa-spin mr-1.5"></i> : <i className="fa-solid fa-volume-high mr-1.5"></i>}
+                                          {msg.audioError ? 'เสียงขัดข้อง' : 'ฟังสรุปเสียง ✨'}
+                                        </button>
+                                      ) : <audio controls src={msg.audioUrl} className="h-8 w-48 shadow-sm rounded-full" autoPlay />}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {msg.type === 'error' && (
+                            <div className="p-5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start space-x-3 shadow-sm rounded-tl-sm mt-1">
+                              <i className="fa-solid fa-circle-exclamation mt-0.5"></i><div className="font-medium">{msg.content}</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    );
+                  })}
+
+                  {activeTasks.length > 0 && (
+                    <div className="flex justify-start ml-[52px] pb-4">
+                      <div className="bg-white/80 backdrop-blur-md border border-slate-200 rounded-2xl p-5 shadow-sm max-w-xl w-full">
+                        <p className="text-[10px] font-bold text-slate-500 mb-4 flex items-center uppercase tracking-widest">
+                          <i className="fa-solid fa-spinner fa-spin mr-2 text-purple-500"></i> Operations in progress
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {activeTasks.map(task => {
+                            const agent = AGENTS[task.agent] || AGENTS.SECRETARY;
+                            return (
+                              <div key={task.id} className="flex items-center space-x-3 text-sm bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                <div className={`${agent.color} bg-opacity-15 w-7 h-7 flex items-center justify-center rounded-md text-center shadow-sm`}>
+                                  <i className={`${agent.icon} ${getIconColorClass(agent.color)} text-xs`}></i>
+                                </div>
+                                <div className="flex flex-col min-w-0 flex-1">
+                                  <span className="font-bold text-slate-700 text-[10px] truncate">{agent.id}</span>
+                                  <span className="text-[9px] font-medium flex items-center mt-0.5 text-slate-500">
+                                    {task.status === 'thinking' && <span className="text-purple-500">กำลังประมวลผล...</span>}
+                                    {task.status === 'working' && <span className="text-amber-500">กำลังเขียนรายงาน...</span>}
+                                    {task.status === 'done' && <span className="text-emerald-500">เสร็จสิ้น</span>}
+                                  </span>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} className="h-4" />
+                </div>
+
+                <div className="p-4 md:p-6 bg-white border-t border-slate-200 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.05)] z-20 flex-shrink-0">
+                  <div className="max-w-5xl mx-auto">
+                    <div className="flex flex-wrap gap-2 mb-3 px-1">
+                      <button onClick={() => handleRefinePrompt('expand')} disabled={isRefining || !inputValue.trim() || isProcessing} className="text-[11px] bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full font-bold hover:bg-purple-200 transition flex items-center shadow-sm disabled:opacity-50">
+                        {isRefining ? <i className="fa-solid fa-spinner fa-spin mr-1.5"></i> : <i className="fa-solid fa-wand-magic-sparkles mr-1.5"></i>} เสกคำสั่งให้สมบูรณ์ ✨
+                      </button>
+                      <button onClick={() => handleRefinePrompt('risk')} disabled={isRefining || !inputValue.trim() || isProcessing} className="text-[11px] bg-amber-100 text-amber-700 px-3 py-1.5 rounded-full font-bold hover:bg-amber-200 transition flex items-center shadow-sm disabled:opacity-50">
+                        {isRefining ? <i className="fa-solid fa-spinner fa-spin mr-1.5"></i> : <i className="fa-solid fa-shield-halved mr-1.5"></i>} ประเมินความเสี่ยง ✨
+                      </button>
+                    </div>
+
+                    <div className="relative flex items-end space-x-3">
+                      <div className="flex-1 bg-slate-50 border border-slate-300 rounded-2xl shadow-inner focus-within:ring-4 focus-within:ring-purple-500/10 focus-within:border-purple-400 transition-all duration-300">
+                        <textarea
+                          value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={handleKeyDown}
+                          placeholder="พิมพ์คำสั่ง... (เช่น 'ให้ทีมนักเทรดเช็คราคา XAUUSD สดๆ หน่อย' หรือ 'หาร้านโอมากาเสะฉลองวันเกิด')"
+                          className="w-full bg-transparent border-none focus:ring-0 p-4 max-h-48 min-h-[60px] resize-none text-[13.5px] text-slate-800 placeholder-slate-400 font-medium outline-none"
+                          rows="2" disabled={isProcessing || isRefining}
+                        />
+                      </div>
+                      <button
+                        onClick={handleSend} disabled={!inputValue.trim() || isProcessing || isRefining}
+                        className={`p-4 h-[60px] w-[60px] rounded-2xl flex items-center justify-center transition-all duration-300 ${!inputValue.trim() || isProcessing || isRefining ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200' : 'bg-slate-900 text-white hover:bg-purple-700 shadow-md hover:shadow-lg hover:-translate-y-1'}`}
+                      >
+                        {isProcessing || isRefining ? <i className="fa-solid fa-spinner fa-spin text-xl"></i> : <i className="fa-solid fa-paper-plane text-xl"></i>}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
